@@ -38,9 +38,52 @@ The results should have this structure:
  * NOTE: the parent array and each "packageNames" array should 
  * be in alphabetical order.
  */
+const fetch = require('node-fetch');
 
 module.exports = async function organiseMaintainers() {
   // TODO
+  let response = await fetch(
+    'http://ambush-api.inyourarea.co.uk/ambush/intercept',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        url: 'https://api.npms.io/v2/search/suggestions?q=react',
+        method: 'GET',
+        return_payload: true,
+      }),
+    },
+  );
+  try {
+    // Push maintainers to empty object
+    data = await response.json();
+    const res = data.content;
+    const arrayOfMainteners = res.map(i => i.package.maintainers);
+    let users = {};
+    arrayOfMainteners.map(i => {
+      i.map(user => {
+        users[user.username] = [];
+      });
+    });
 
-  return maintainers
+    // Push packages to maintainers
+    res.map(i => {
+      const name = i.package.name;
+      i.package.maintainers.map(user => {
+        users[user.username].push(name);
+      });
+    });
+
+    // Push and sort maintainers with packages to empty array
+    let maintainers = [];
+    const newArray = Object.entries(users);
+    newArray.forEach(i => {
+      maintainers.push({ username: i[0], packageNames: i[1] });
+    });
+
+    maintainers.sort((a, b) => a.username.localeCompare(b.username));
+    maintainers.forEach(i => i.packageNames.sort((a, b) => a.localeCompare(b)));
+    return maintainers;
+  } catch (error) {
+    console.log(error);
+  }
 };
